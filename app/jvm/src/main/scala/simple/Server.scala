@@ -8,7 +8,7 @@ import akka.stream.ActorMaterializer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Properties
 
-object Server{
+object Server extends Api{
   def main(args: Array[String]): Unit = {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
@@ -24,17 +24,22 @@ object Server{
             )
           }
         } ~
-        getFromResourceDirectory("")
+          getFromResourceDirectory("")
       } ~
-      post{
-        path("ajax" / "list"){
-          entity(as[String]) { e =>
-            complete {
-              upickle.default.write(list(e))
+        post{
+          path("ajax" / Segments){s =>
+            entity(as[String]) { e =>
+              complete {
+                Router.route[Api](Server)(
+                  autowire.Core.Request(
+                    s,
+                    upickle.default.read[Map[String, String]](e)
+                  )
+                )
+              }
             }
           }
         }
-      }
     }
     Http().bindAndHandle(route, "0.0.0.0", port = port)
   }
